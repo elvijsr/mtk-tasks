@@ -1,0 +1,64 @@
+create or replace procedure quicksort(
+   inout numbers int[]
+)
+as $$
+declare
+	items_greater int[];
+	items_lower int[];
+	x int;
+	pivot int;
+
+begin
+	if array_length(numbers, 1) = 1 then
+		return;
+	end if;
+	
+	pivot := numbers[1];
+	numbers := numbers[2:];
+	
+    foreach x in array numbers
+	loop
+		if x > pivot then 
+			items_greater := array_append(items_greater, x);
+		else
+			items_lower := array_append(items_lower, x);
+		end if;
+	end loop;
+	
+	if array_length(items_lower, 1) > 0 then
+		call quicksort(items_lower);
+	end if;
+	
+	if array_length(items_greater, 1) > 0 then
+		call quicksort(items_greater);
+	end if;
+	
+	numbers := array_append(items_lower, pivot);
+	numbers := array_cat(numbers, items_greater);
+end;
+$$ LANGUAGE plpgsql;
+
+
+create or replace function array_sort(arr int[])
+returns jsonb
+as $$
+declare
+	initial int[];
+	swap_count int := 0;
+	x int;
+	ind int := 1;
+begin
+	initial := arr;
+	call quicksort(arr);
+	foreach x in array initial
+	loop
+		if x != arr[ind] then
+			swap_count := swap_count + 1;
+		end if;
+		ind := ind + 1;
+	end loop;
+	return jsonb_build_object('initial_array', initial, 'sorted_array', arr, 'swap_count', swap_count);
+end;
+$$ LANGUAGE plpgsql;
+
+select array_sort(array[17,4,2,8,1,3,9,8,5,7,6,6,6]);
